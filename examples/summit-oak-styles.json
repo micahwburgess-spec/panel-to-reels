@@ -1,0 +1,56 @@
+{
+  "buildup": {
+    "label": "Buildup Style",
+    "description": "Poppins build-up captions; spoken word and emphasis words cycle red, blue, magenta per page. Anton cover with one solid accent per clip.",
+    "caption": {
+      "font": "Poppins-SemiBold.ttf",
+      "size": 54,
+      "emph_font": "Poppins-ExtraBold.ttf",
+      "emph_size": 80,
+      "colors": [[232, 56, 79], [45, 107, 255], [201, 79, 216]],
+      "pill": [11, 11, 13, 210]
+    },
+    "cover": {
+      "headline_font": "Anton-Regular.ttf",
+      "lockup_font": "Poppins-SemiBold.ttf",
+      "accents": {
+        "gold": [236, 178, 52],
+        "red": [234, 62, 50],
+        "blue": [47, 140, 255]
+      },
+      "tints": {
+        "gold": [20, 15, 6],
+        "red": [34, 6, 6],
+        "blue": [5, 14, 38]
+      },
+      "lockup": ["MICAH BURGESS", "SUMMIT OAK AI"],
+      "separator": "×",
+      "separator_color": "accent"
+    }
+  },
+  "brand": {
+    "label": "Summit Oak Style",
+    "description": "Sora build-up captions; spoken word and emphasis words filled with the brand gradient. Anton cover with gradient accent words and rule, dark tint and a violet bloom.",
+    "caption": {
+      "font": "Sora:SemiBold",
+      "size": 50,
+      "emph_font": "Sora:ExtraBold",
+      "emph_size": 74,
+      "gradient": [[255, 106, 61], [255, 61, 189], [178, 77, 255]],
+      "pill": [11, 11, 13, 210]
+    },
+    "cover": {
+      "headline_font": "Anton-Regular.ttf",
+      "lockup_font": "Poppins-SemiBold.ttf",
+      "gradient": [[255, 106, 61], [255, 61, 189], [178, 77, 255]],
+      "tint": [11, 11, 13],
+      "bloom": {
+        "color": [60, 18, 90],
+        "strength": 0.45
+      },
+      "lockup": ["SUMMIT OAK AI", "NETWORK OF DIRECTORS"],
+      "separator": "×",
+      "separator_color": [255, 61, 189]
+    }
+  }
+}

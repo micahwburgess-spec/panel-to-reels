@@ -1,0 +1,44 @@
+{
+  "clips": {
+    "A": {
+      "title": "Your Website Has Two Jobs",
+      "speaker": "Your Name",
+      "spans": [[2246, 2493]],
+      "fix": {},
+      "framing": [
+        {"from": 0, "x": 0.77, "crop": 0.62}
+      ],
+      "emphasis": [2251, 2267],
+      "headline": "YOUR WEBSITE HAS *TWO JOBS.*",
+      "accent": "gold",
+      "cover_time": 15,
+      "cover_shift": 0
+    },
+    "G": {
+      "title": "It Was Relief",
+      "speaker": "Guest Speaker",
+      "spans": [[11893, 11999]],
+      "fix": {"11893": "So"},
+      "framing": [
+        {"from": 0, "mode": "letterbox"},
+        {"from": 3617.2, "x": 0.526, "crop": 0.8},
+        {"from": 3629.07, "x": 0.54, "crop": 0.62}
+      ],
+      "headline": "LANDED ON THE MOON. *IT WAS RELIEF.*",
+      "accent": "red",
+      "cover_time": 8
+    },
+    "S4": {
+      "title": "Solo Talking Head",
+      "speaker": "Your Name",
+      "source_file": "/path/to/edited-vertical.mov",
+      "fix": {"12": ""},
+      "caption_center": 1430,
+      "headline": "THE ONE THING *THAT CHANGED IT.*",
+      "accent": "gold",
+      "cover_time": 3,
+      "cover_shift": 380,
+      "lockup": ["YOUR NAME", "YOUR BRAND"]
+    }
+  }
+}

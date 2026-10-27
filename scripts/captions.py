@@ -158,7 +158,11 @@ def draw_page(page, t, st, f, ef, color_of):
     tight = shadow.filter(ImageFilter.GaussianBlur(3)).point(lambda v: int(v * 0.75))
     out = Image.new("RGBA", (W, STRIP_H), (0, 0, 0, 0))
     if pill:
-        ImageDraw.Draw(out).rounded_rectangle(pill, 26, fill=tuple(st.get("pill", (11, 11, 13, 210))))
+        # fade the pill in with the page's first word so it never shows up empty
+        r, g, b, pa = tuple(st.get("pill", (11, 11, 13, 210)))
+        pa = int(pa * ease_pop(t - page[0]["s"], False)[0])
+        if pa > 0:
+            ImageDraw.Draw(out).rounded_rectangle(pill, 26, fill=(r, g, b, pa))
     for m in (wide, tight):
         layer = Image.new("RGBA", (W, STRIP_H), (0, 0, 0, 0)); layer.putalpha(m)
         out = Image.alpha_composite(out, layer)

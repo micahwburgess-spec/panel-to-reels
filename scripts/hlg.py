@@ -6,7 +6,8 @@ from PIL import Image
 M709_2020 = np.array([[0.6274, 0.3293, 0.0433], [0.0691, 0.9195, 0.0114], [0.0164, 0.0880, 0.8956]])
 M2020_709 = np.linalg.inv(M709_2020)
 A, B, C = 0.17883277, 0.28466892, 0.55991073
-REF = 0.30        # slightly above BT.2408 white so bright walls hold detail in the SDR still
+GAIN = 0.58       # SDR exposure for stills: 1.0 maps BT.2408 graphics white (203 nits) to SDR white; 0.58 keeps faces from clipping
+KNEE = 0.70       # highlights above this roll off smoothly toward white instead of clipping
 
 
 def is_hlg(src):
@@ -25,10 +26,11 @@ def frame(src, t, w=1080, h=1920):
                                    "-f", "rawvideo", "-"])
     s = np.frombuffer(raw, "<u2").reshape(h, w, 3).astype(np.float64) / 65535
     e = np.where(s <= 0.5, s * s / 3, (np.exp((s - C) / A) + B) / 12)        # inverse HLG OETF -> scene light
-    lin = e / REF                                                           # reference white -> 1.0
+    # BT.2100 OOTF (system gamma 1.2 on luminance), then 203-nit reference white -> SDR white
+    ys = 0.2627 * e[..., 0] + 0.6780 * e[..., 1] + 0.0593 * e[..., 2]
+    lin = e * np.power(np.maximum(ys, 1e-6), 0.2)[..., None] / 0.203 * GAIN
     with np.errstate(all="ignore"):
         lin = np.clip(lin @ M2020_709.T, 0, None)                               # BT.2020 -> BT.709 primaries
-    k = 0.8                                                                  # soft shoulder for highlights
-    lin = np.where(lin <= k, lin, k + (1 - k) * np.tanh((lin - k) / (1 - k)))
+    lin = np.where(lin <= KNEE, lin, KNEE + (1 - KNEE) * (1 - np.exp(-(lin - KNEE) / (1 - KNEE))))
     srgb = np.where(lin <= 0.0031308, lin * 12.92, 1.055 * np.power(lin, 1 / 2.4) - 0.055)
     return Image.fromarray((np.clip(srgb, 0, 1) * 255 + 0.5).astype(np.uint8))

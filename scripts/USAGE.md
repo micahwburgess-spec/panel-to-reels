@@ -121,7 +121,11 @@ skill's `fonts/` dir; `"Sora:ExtraBold"` picks a named instance of a variable fo
     "emph_font": "Poppins-ExtraBold.ttf", "emph_size": 80, // emphasis words
     "colors": [[232, 56, 79], [45, 107, 255]],           // live highlight + emphasis color, cycling per page
     "gradient": null,                                    // or [[r,g,b], ...]: gradient fill instead of colors
-    "pill": [11, 11, 13, 210]                            // dark pill behind pages over bright backgrounds
+    "pill": [11, 11, 13, 210],                           // dark pill behind pages over bright backgrounds
+    "text": [255, 255, 255],                             // optional: color of words that are not lit
+    "plate": null,                                       // or {"fill": [r,g,b], "text": [r,g,b], "pad": 16}: emphasis
+                                                         // words sit on a solid label instead of being colored
+    "upper": false                                       // true sets captions in caps
   },
   "cover": {
     "headline_font": "Anton-Regular.ttf", "lockup_font": "Poppins-SemiBold.ttf",
@@ -131,13 +135,17 @@ skill's `fonts/` dir; `"Sora:ExtraBold"` picks a named instance of a variable fo
     "tint": [11, 11, 13],                       // tint when the accent has none in tints
     "bloom": {"color": [60, 18, 90], "strength": 0.45},  // optional glow behind the headline
     "lockup": ["YOUR NAME", "YOUR EVENT"],      // letterspaced lines under the rule ([] for none)
-    "separator": "×", "separator_color": "accent"   // or [r, g, b]
-  }
-}}
+    "separator": "×", "separator_color": "accent",  // or [r, g, b]
+    "plate": null                               // or {"fill": [r,g,b], "text": [r,g,b]}: accent lines on a solid bar
+  },
+  "grade": null                                 // optional ffmpeg filter chain for the video and cover still,
+}}                                              // e.g. "hue=s=0,curves=..." for black and white
 ```
 Shipped presets: `buildup` (Poppins, red/blue/magenta per page, gold/red/blue cover accents) and
 `brand` (Sora, coral/magenta/violet gradient, dark tint + violet bloom). `examples/summit-oak-styles.json`
 is the same pair with Summit Oak lockups; copy it to `P/styles.json` to use it.
+`examples/mono-styles.json` shows a monochrome look built from these options: a black and white `grade`,
+Inter caps, and emphasis words on a white `plate` (plus a color variant with one red accent).
 
 ## Step reference
 

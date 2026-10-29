@@ -8,6 +8,12 @@ Styles come from P/styles.json (or the skill's styles.json). The "caption" block
   colors                  [[r,g,b], ...] solid highlight + emphasis color, cycling per page
   gradient                [[r,g,b], ...] left-to-right gradient fill instead of solid colors
   pill                    [r,g,b,a] dark pill drawn behind pages over bright backgrounds
+  text                    [r,g,b] color of words that are not lit (default white)
+  plate                   {"fill": [r,g,b], "text": [r,g,b]}: emphasis words sit on a solid plate instead of
+                          being colored (a logo-style label); "pad" sets its horizontal padding in px
+  upper                   true to set captions in caps
+A style may also carry a top-level "grade": an ffmpeg filter chain applied to the video under the captions
+(and to the cover still), e.g. "hue=s=0,curves=..." for a black and white look. The base clip is unchanged.
 Words pop in as spoken; the spoken word lights up; every page gets at least one emphasis word
 (clips.json "emphasis" indices first, auto-picked otherwise). iPhone HLG HDR input stays 10-bit HLG.
 Clip keys used: fix, emphasis, caption_center (px from top, default 1215; ~1430 for selfie framing).
@@ -23,6 +29,12 @@ CENTER = 215
 DEFAULT_CENTER = 1215                  # 63% down the frame
 MAX_W = 880
 STRIP_Y = DEFAULT_CENTER - CENTER
+PAD = 0                                # extra space each side of an emphasis word (set from the style's plate)
+
+
+def adv(w, f, ef):
+    """Horizontal space a word takes on its line."""
+    return ef.getlength(w["w"]) + 2 * PAD if w["emph"] else f.getlength(w["w"])
 
 
 def merge_tokens(words):
@@ -78,7 +90,7 @@ def layout(ws, f, ef):
     lines, line = [], []
     for w in ws:
         trial = line + [w]
-        tw = sum((ef if x["emph"] else f).getlength(x["w"]) for x in trial) + f.getlength(" ") * (len(trial) - 1)
+        tw = sum(adv(x, f, ef) for x in trial) + f.getlength(" ") * (len(trial) - 1)
         if line and tw > MAX_W:
             lines.append(line); line = [w]
         else:
@@ -119,31 +131,45 @@ def draw_page(page, t, st, f, ef, color_of):
     layers = []
     pill = None
     if page[0].get("bright"):
-        widest = max(sum((ef if w["emph"] else f).getlength(w["w"]) for w in ln) + f.getlength(" ") * (len(ln) - 1) for ln in lines)
+        widest = max(sum(adv(w, f, ef) for w in ln) + f.getlength(" ") * (len(ln) - 1) for ln in lines)
         top = CENTER - sum(heights) / 2
         pill = ((W - widest) / 2 - 30, top - 8, (W + widest) / 2 + 30, top + sum(heights) + 14)
     for ln, lh in zip(lines, heights):
-        tw = sum((ef if w["emph"] else f).getlength(w["w"]) for w in ln) + f.getlength(" ") * (len(ln) - 1)
+        tw = sum(adv(w, f, ef) for w in ln) + f.getlength(" ") * (len(ln) - 1)
         x = (W - tw) / 2
         base = y + lh * 0.78
         for w in ln:
             fnt = ef if w["emph"] else f
-            adv = fnt.getlength(w["w"])
+            wa = adv(w, f, ef)
             a, s, dy = ease_pop(t - w["s"], w["emph"])
             if a > 0:
-                layers.append((w, fnt, x, base + dy, adv, a, s))
-            x += adv + f.getlength(" ")
+                layers.append((w, fnt, x, base + dy, wa, a, s))
+            x += wa + f.getlength(" ")
         y += lh
-    for w, fnt, x, base, adv, a, s in layers:
+    plate = st.get("plate")
+    for w, fnt, x, base, wa, a, s in layers:
         # render each word on its own tile so it can scale around its center
-        asc = fnt.getmetrics()[0]
-        tile = Image.new("L", (int(adv) + 40, int(asc * 1.6) + 40), 0)
-        ImageDraw.Draw(tile).text((20, 20), w["w"], font=fnt, fill=255)
+        asc, desc = fnt.getmetrics()
+        on_plate = plate and w["emph"]
+        tile = Image.new("L", (int(wa) + 40, int(asc * 1.6) + 40), 0)
+        ImageDraw.Draw(tile).text((20 + (PAD if on_plate else 0), 20), w["w"], font=fnt, fill=255)
+        if on_plate:   # solid label from cap height to just under the baseline, like a logo plate
+            cap_top = fnt.getbbox("H")[1]
+            pv = int(fnt.size * 0.13)
+            pm = Image.new("L", tile.size, 0)
+            ImageDraw.Draw(pm).rounded_rectangle((20, 20 + cap_top - pv, 20 + wa, 20 + asc + desc * 0.45), plate.get("radius", 6), fill=255)
         cx, cy = x - 20 + tile.width / 2, base - asc - 20 + tile.height / 2   # unscaled tile center
         if s != 1:
             tile = tile.resize((max(1, int(tile.width * s)), max(1, int(tile.height * s))), Image.BICUBIC)
+            if on_plate: pm = pm.resize(tile.size, Image.BICUBIC)
         px, py = int(cx - tile.width / 2), int(cy - tile.height / 2)
         m = tile.point(lambda v: int(v * a))
+        if on_plate:
+            pm = pm.point(lambda v: int(v * a))
+            shadow.paste(255, (px, py + 3), pm)
+            img.paste(Image.new("RGBA", tile.size, tuple(plate["fill"]) + (255,)), (px, py), pm)
+            img.paste(Image.new("RGBA", tile.size, tuple(plate.get("text", (12, 12, 12))) + (255,)), (px, py), m)
+            continue
         shadow.paste(255, (px, py + 3), m)
         if w["emph"] or w["act_s"] <= t < w["act_e"]:
             if st.get("gradient"):
@@ -151,7 +177,7 @@ def draw_page(page, t, st, f, ef, color_of):
             else:
                 face = Image.new("RGBA", tile.size, color_of(w) + (255,))
         else:
-            face = Image.new("RGBA", tile.size, (255, 255, 255, 255))
+            face = Image.new("RGBA", tile.size, tuple(st.get("text", (255, 255, 255))) + (255,))
         img.paste(face, (px, py), m)
     # two-layer shadow: wide soft glow for separation + tight contact shadow for edge definition
     wide = shadow.filter(ImageFilter.GaussianBlur(14)).point(lambda v: int(min(255, v * 1.6) * 0.55))
@@ -190,9 +216,12 @@ def to_hlg(img):
 
 
 def main(P, k, style_name):
-    global STRIP_Y
+    global STRIP_Y, PAD
     c = common.clip(P, k)
-    st = common.style(P, style_name)["caption"]
+    sty = common.style(P, style_name)
+    st = sty["caption"]
+    grade = (sty.get("grade") + ",") if sty.get("grade") else ""
+    PAD = int((st.get("plate") or {}).get("pad", 16)) if st.get("plate") else 0
     center = int(c.get("caption_center") or DEFAULT_CENTER)
     STRIP_Y = min(max(center - CENTER, 0), H - STRIP_H)
     f = common.font(st["font"], st["size"])
@@ -204,6 +233,8 @@ def main(P, k, style_name):
     fix = c.get("fix") or {}
     raw_words = [dict(w, w=fix.get(str(w["i"]), w["w"])) for w in json.load(open(wpath))]
     words = merge_tokens([w for w in raw_words if w["w"].strip()])      # "" fixes drop the word
+    if st.get("upper"):
+        for w in words: w["w"] = w["w"].upper()
     emph = set(c.get("emphasis") or [])
     for _ in range(3):   # every page gets at least one emphasis word; re-page since emphasis is wider
         pages = paginate(words, emph, f, ef)
@@ -238,13 +269,13 @@ def main(P, k, style_name):
     if hdr:   # iPhone HLG footage: convert captions into HLG and keep the file 10-bit HDR
         pix, conv = "rgba64le", to_hlg
         vf = (f"[1:v]scale=out_color_matrix=bt2020:out_range=tv,format=yuva444p10le[c];"
-              f"[0:v]{fit}null[b];[b][c]overlay=0:{STRIP_Y}:format=yuv420p10:eof_action=pass,format=yuv420p10le[v]")
+              f"[0:v]{fit}{grade}null[b];[b][c]overlay=0:{STRIP_Y}:format=yuv420p10:eof_action=pass,format=yuv420p10le[v]")
         venc = ["-c:v", "libx265", "-preset", "medium", "-crf", "15", "-tag:v", "hvc1",
                 "-x265-params", "log-level=error:colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc:range=limited",
                 "-color_primaries", "bt2020", "-color_trc", "arib-std-b67", "-colorspace", "bt2020nc", "-color_range", "tv"]
     else:
         pix, conv = "rgba", (lambda im: im.tobytes())
-        vf = f"[0:v]{fit}null[b];[b][1:v]overlay=0:{STRIP_Y}:eof_action=pass,format=yuv420p[v]"
+        vf = f"[0:v]{fit}{grade}null[b];[b][1:v]overlay=0:{STRIP_Y}:eof_action=pass,format=yuv420p[v]"
         venc = ["-c:v", "libx264", "-preset", "medium", "-crf", "17", "-profile:v", "high"]
     p = subprocess.Popen(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", src,
                           "-f", "rawvideo", "-pix_fmt", pix, "-s", f"{W}x{STRIP_H}", "-r", str(FPS), "-i", "pipe:0",

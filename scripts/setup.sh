@@ -92,6 +92,7 @@ fetch_font "anton/Anton-Regular.ttf" "Anton-Regular.ttf"
 fetch_font "poppins/Poppins-SemiBold.ttf" "Poppins-SemiBold.ttf"
 fetch_font "poppins/Poppins-ExtraBold.ttf" "Poppins-ExtraBold.ttf"
 fetch_font "sora/Sora%5Bwght%5D.ttf" "Sora.ttf"
+fetch_font "inter/Inter%5Bopsz,wght%5D.ttf" "Inter.ttf"
 
 # 5. face detector
 mkdir -p "$BIN"

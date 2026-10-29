@@ -1,0 +1,132 @@
+{
+  "black": {
+    "label": "Mono",
+    "description": "Monochrome: black and white grade, Inter caps, emphasis words on a white plate.",
+    "grade": "hue=s=0,curves=all='0/0 0.16/0.10 0.5/0.5 0.84/0.90 1/1',vignette=PI/5,noise=alls=4:allf=t",
+    "caption": {
+      "font": "Inter:Bold",
+      "size": 58,
+      "emph_font": "Inter:Black",
+      "emph_size": 74,
+      "upper": true,
+      "colors": [
+        [
+          255,
+          255,
+          255
+        ]
+      ],
+      "text": [
+        196,
+        196,
+        196
+      ],
+      "plate": {
+        "fill": [
+          255,
+          255,
+          255
+        ],
+        "text": [
+          10,
+          10,
+          10
+        ],
+        "pad": 16
+      },
+      "pill": [
+        8,
+        8,
+        8,
+        200
+      ]
+    },
+    "cover": {
+      "headline_font": "Inter:Black",
+      "lockup_font": "Inter:SemiBold",
+      "accents": {
+        "white": [
+          255,
+          255,
+          255
+        ]
+      },
+      "tint": [
+        6,
+        6,
+        6
+      ],
+      "plate": {
+        "fill": [
+          255,
+          255,
+          255
+        ],
+        "text": [
+          10,
+          10,
+          10
+        ]
+      },
+      "lockup": [
+        "YOUR NAME",
+        "YOUR BRAND"
+      ],
+      "separator": "\u00d7",
+      "separator_color": [
+        255,
+        255,
+        255
+      ]
+    }
+  },
+  "red": {
+    "label": "Mono Red",
+    "description": "Color variant: moody grade, Inter caps, spoken and emphasis words in one red accent.",
+    "grade": "eq=saturation=0.82:contrast=1.05,vignette=PI/6",
+    "caption": {
+      "font": "Inter:Bold",
+      "size": 58,
+      "emph_font": "Inter:Black",
+      "emph_size": 82,
+      "upper": true,
+      "colors": [
+        [
+          226,
+          36,
+          44
+        ]
+      ],
+      "pill": [
+        8,
+        8,
+        8,
+        200
+      ]
+    },
+    "cover": {
+      "headline_font": "Inter:Black",
+      "lockup_font": "Inter:SemiBold",
+      "accents": {
+        "red": [
+          226,
+          36,
+          44
+        ]
+      },
+      "tints": {
+        "red": [
+          20,
+          6,
+          6
+        ]
+      },
+      "lockup": [
+        "YOUR NAME",
+        "YOUR BRAND"
+      ],
+      "separator": "\u00d7",
+      "separator_color": "accent"
+    }
+  }
+}

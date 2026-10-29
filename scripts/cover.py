@@ -17,8 +17,11 @@ The "cover" block of a style:
   bloom                        {"color": [r,g,b], "strength": 0.45}: soft glow behind the headline
   lockup                       [top, bottom] letterspaced lines under the rule, joined by separator
   separator, separator_color   e.g. "×" and "accent" or [r,g,b]
+  plate                        {"fill": [r,g,b], "text": [r,g,b]}: accent lines sit on a solid bar instead of
+                               being colored (a logo-style label)
+The style's top-level "grade" (an ffmpeg filter chain, see captions.py) is applied to the still too.
 """
-import os, re, sys
+import os, re, subprocess, sys
 from itertools import combinations
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
@@ -66,24 +69,40 @@ def wrap(toks, font, maxw):
     return lines
 
 
-def headline_masks(lines, font, size, bottom):
-    lh = int(size * 0.94)
+def graded(img, grade):
+    """Run a still through the same ffmpeg filter chain the video gets."""
+    out = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
+                          "-i", "-", "-vf", f"format=yuv420p,{grade},format=rgb24", "-f", "rawvideo", "-"],
+                         input=img.convert("RGB").tobytes(), capture_output=True, check=True).stdout
+    return Image.frombytes("RGB", (W, H), out)
+
+
+def headline_masks(lines, font, size, bottom, plate=False):
+    lh = int(size * (1.08 if plate else 0.94))
     top = bottom - lh * len(lines)
-    shadow, hot_mask, white_mask = (Image.new("L", (W, H), 0) for _ in range(3))
+    shadow, hot_mask, white_mask, plate_mask = (Image.new("L", (W, H), 0) for _ in range(4))
     sd, hd, wd = ImageDraw.Draw(shadow), ImageDraw.Draw(hot_mask), ImageDraw.Draw(white_mask)
     for i, ln in enumerate(lines):
         y = top + i * lh
-        x = (W - font.getlength(" ".join(w for w, _ in ln))) / 2
+        lw = font.getlength(" ".join(w for w, _ in ln))
+        x = (W - lw) / 2
+        if plate and ln[0][1]:   # one solid bar per accent line, cap height plus padding
+            cap_top, cap_bot = font.getbbox("H")[1], font.getbbox("H")[3]
+            pad = int(size * 0.16)
+            ImageDraw.Draw(plate_mask).rectangle((x - pad * 1.4, y + cap_top - pad, x + lw + pad * 1.4, y + cap_bot + pad), fill=255)
         for w, hot in ln:
             (hd if hot else wd).text((x, y), w, font=font, fill=255)
-            sd.text((x, y + 6), w, font=font, fill=255)
+            if not (plate and hot): sd.text((x, y + 6), w, font=font, fill=255)
             x += font.getlength(w + " ")
-    return shadow, hot_mask, white_mask
+    if plate: ImageDraw.Draw(shadow).bitmap((0, 6), plate_mask, fill=255)
+    return shadow, hot_mask, white_mask, plate_mask
 
 
 def main(P, k, style_name):
     c = common.clip(P, k)
-    cv = common.style(P, style_name)["cover"]
+    sty = common.style(P, style_name)
+    cv = sty["cover"]
+    plate = cv.get("plate")
     src = common.base_video(P, k)
     t = c.get("cover_time")
     if t is None: t = common.duration(src) / 3
@@ -98,6 +117,7 @@ def main(P, k, style_name):
     grad = cv.get("gradient")
 
     img = hlg.frame(src, t)   # tone-maps iPhone HLG footage to SDR for the still
+    if sty.get("grade"): img = graded(img, sty["grade"])
     if shift:   # slide the photo up so the face clears the headline, fading its new bottom edge into the tint
         img = img.crop((0, shift, W, H))
         fade = Image.linear_gradient("L").rotate(180).resize((W, 220))
@@ -118,7 +138,7 @@ def main(P, k, style_name):
     toks = tokens(headline)
     for size in range(172, 96, -4):
         font = common.font(cv.get("headline_font", "Anton-Regular.ttf"), size)
-        lines = wrap(toks, font, 920)
+        lines = wrap(toks, font, 860 if plate else 920)
         widow = any(len(ln) == 1 and font.getlength(ln[0][0]) < 0.42 * 920 and i > 0 and lines[i - 1][-1][1] == ln[0][1]
                     for i, ln in enumerate(lines))
         if len(lines) <= 4 and not widow: break
@@ -126,8 +146,8 @@ def main(P, k, style_name):
     lockup_h = {0: 0, 1: 34 + 36}.get(len(lockup), 112 + 32)   # rule-to-lockup-bottom height
     bottom = 1430
     for _ in range(2):   # keep everything inside the grid-safe band: lift the block if the lockup would spill
-        shadow, hot_mask, white_mask = headline_masks(lines, font, size, bottom)
-        text_bottom = max((m.getbbox() or (0, 0, 0, bottom))[3] for m in (hot_mask, white_mask))
+        shadow, hot_mask, white_mask, plate_mask = headline_masks(lines, font, size, bottom, bool(plate))
+        text_bottom = max((m.getbbox() or (0, 0, 0, bottom))[3] for m in (hot_mask, white_mask, plate_mask))
         spill = text_bottom + 40 + lockup_h - SAFE_BOTTOM
         if spill <= 0: break
         bottom -= spill
@@ -135,7 +155,10 @@ def main(P, k, style_name):
     sh.putalpha(shadow.filter(ImageFilter.GaussianBlur(14)).point(lambda v: int(v * 0.6)))
     img = Image.alpha_composite(img, sh)
     img.paste(Image.new("RGBA", (W, H), (255, 255, 255, 255)), (0, 0), white_mask)
-    if grad:   # gradient spans the hot words' own extent, not the whole canvas
+    if plate:
+        img.paste(Image.new("RGBA", (W, H), tuple(plate["fill"]) + (255,)), (0, 0), plate_mask)
+        hot_fill = Image.new("RGBA", (W, H), tuple(plate.get("text", (12, 12, 12))) + (255,))
+    elif grad:   # gradient spans the hot words' own extent, not the whole canvas
         hot_fill = Image.new("RGBA", (W, H))
         bb = hot_mask.getbbox()
         if bb: hot_fill.paste(gradient(bb[2] - bb[0], bb[3] - bb[1], grad), (bb[0], bb[1]))
